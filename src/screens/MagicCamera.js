@@ -3,13 +3,13 @@ import {
   View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet,
   SafeAreaView, ActivityIndicator, Alert, Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system';
 import { WORLDS } from '../constants/worlds';
 import { StorageService } from '../services/StorageService';
 import { transformHomeworkToQuest, analyzeHomeworkImage } from '../services/AIService';
+import { THEME } from '../constants/theme';
 
 export default function MagicCamera({ navigation, route }) {
   const [activeWorld, setActiveWorld]   = useState(route.params?.world || WORLDS[0]);
@@ -79,123 +79,131 @@ export default function MagicCamera({ navigation, route }) {
   };
 
   return (
-    <LinearGradient colors={[activeWorld.bgColor, activeWorld.primaryColor]} style={styles.fill}>
-      <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          {/* Back */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-            <Text style={[styles.backTxt, { color: activeWorld.textColor }]}>← Back</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={[styles.fill, { backgroundColor: activeWorld.bgColor }]}>
+      {/* Header bar */}
+      <View style={[styles.headerBar, { backgroundColor: activeWorld.headerBg }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
+          <Text style={styles.backTxt}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>📸 Magic Camera</Text>
+        <View style={{ width: 60 }} />
+      </View>
 
-          {/* Title */}
-          <Text style={styles.title}>📸 Magic Camera</Text>
-          <Text style={[styles.subtitle, { color: activeWorld.textColor }]}>
-            Show {activeWorld.guide} your homework!
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.subtitle, { color: activeWorld.textColor }]}>
+          Show {activeWorld.guide} your homework!
+        </Text>
+
+        {/* Guide card */}
+        <View style={[styles.guideBubble, { borderLeftColor: activeWorld.accentColor }]}>
+          <Text style={styles.guideEmoji}>{activeWorld.guideEmoji}</Text>
+          <Text style={[styles.guideText, { color: activeWorld.textColor }]}>
+            Snap a photo of your homework OR type it below. I'll transform it into an epic quest!
           </Text>
+        </View>
 
-          {/* Guide */}
-          <View style={[styles.guideBubble, { backgroundColor: activeWorld.primaryColor + 'AA', borderColor: activeWorld.accentColor }]}>
-            <Text style={styles.guideEmoji}>{activeWorld.guideEmoji}</Text>
-            <Text style={[styles.guideText, { color: activeWorld.textColor }]}>
-              Snap a photo of your homework OR type it below. I'll transform it into an epic quest!
-            </Text>
-          </View>
-
-          {/* Camera buttons */}
-          <View style={styles.camRow}>
-            <TouchableOpacity
-              style={[styles.camBtn, { backgroundColor: activeWorld.buttonColor }]}
-              onPress={takePhoto}
-            >
-              <Text style={styles.camBtnIcon}>📷</Text>
-              <Text style={styles.camBtnTxt}>Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.camBtn, { backgroundColor: activeWorld.primaryColor }]}
-              onPress={pickFromLibrary}
-            >
-              <Text style={styles.camBtnIcon}>🖼️</Text>
-              <Text style={styles.camBtnTxt}>From Library</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Photo preview */}
-          {photoUri && (
-            <View style={styles.photoWrap}>
-              <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
-              <TouchableOpacity
-                style={styles.clearPhoto}
-                onPress={() => { setPhotoUri(null); setInputMode('text'); }}
-              >
-                <Text style={styles.clearPhotoTxt}>✕ Clear</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: activeWorld.textColor + '33' }]} />
-            <Text style={[styles.dividerTxt, { color: activeWorld.textColor + '88' }]}>OR TYPE IT</Text>
-            <View style={[styles.divider, { backgroundColor: activeWorld.textColor + '33' }]} />
-          </View>
-
-          {/* Text input */}
-          <Text style={[styles.inputLabel, { color: activeWorld.accentColor }]}>
-            {activeWorld.guideEmoji} Type your homework here:
-          </Text>
-          <TextInput
-            style={[styles.textInput, { color: activeWorld.textColor, borderColor: activeWorld.accentColor + '66' }]}
-            multiline
-            placeholder={`What's the ${activeWorld.terms.quest}, ${activeWorld.terms.hero}? Paste it here...`}
-            placeholderTextColor={activeWorld.textColor + '44'}
-            value={homeworkText}
-            onChangeText={text => { setHomeworkText(text); if (text) setInputMode('text'); }}
-            textAlignVertical="top"
-            numberOfLines={5}
-          />
-
-          {/* Transform button */}
+        {/* Camera buttons */}
+        <View style={styles.camRow}>
           <TouchableOpacity
-            style={[styles.transformBtn, { backgroundColor: loading ? '#555' : activeWorld.buttonColor }]}
-            onPress={transformQuest}
-            disabled={loading}
+            style={[styles.camBtn, { backgroundColor: activeWorld.buttonColor }]}
+            onPress={takePhoto}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="large" />
-            ) : (
-              <>
-                <Text style={styles.transformIcon}>⚡</Text>
-                <Text style={styles.transformTxt}>TRANSFORM QUEST!</Text>
-              </>
-            )}
+            <Text style={styles.camBtnIcon}>📷</Text>
+            <Text style={styles.camBtnTxt}>Take Photo</Text>
           </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+          <TouchableOpacity
+            style={[styles.camBtn, { backgroundColor: activeWorld.primaryColor }]}
+            onPress={pickFromLibrary}
+          >
+            <Text style={styles.camBtnIcon}>🖼️</Text>
+            <Text style={styles.camBtnTxt}>From Library</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Photo preview */}
+        {photoUri && (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+            <TouchableOpacity
+              style={styles.clearPhoto}
+              onPress={() => { setPhotoUri(null); setInputMode('text'); }}
+            >
+              <Text style={styles.clearPhotoTxt}>✕ Clear</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={[styles.divider, { backgroundColor: activeWorld.textColor + '33' }]} />
+          <Text style={[styles.dividerTxt, { color: activeWorld.textColor + '77' }]}>OR TYPE IT</Text>
+          <View style={[styles.divider, { backgroundColor: activeWorld.textColor + '33' }]} />
+        </View>
+
+        {/* Text input */}
+        <Text style={[styles.inputLabel, { color: activeWorld.primaryColor }]}>
+          {activeWorld.guideEmoji} Type your homework here:
+        </Text>
+        <TextInput
+          style={[styles.textInput, { borderColor: activeWorld.primaryColor + '44', color: activeWorld.textColor }]}
+          multiline
+          placeholder={`What's the ${activeWorld.terms.quest}, ${activeWorld.terms.hero}? Paste it here...`}
+          placeholderTextColor="#BBB"
+          value={homeworkText}
+          onChangeText={text => { setHomeworkText(text); if (text) setInputMode('text'); }}
+          textAlignVertical="top"
+          numberOfLines={5}
+        />
+
+        {/* Transform button */}
+        <TouchableOpacity
+          style={[styles.transformBtn, { backgroundColor: loading ? '#BDBDBD' : activeWorld.buttonColor }]}
+          onPress={transformQuest}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" size="large" />
+          ) : (
+            <>
+              <Text style={styles.transformIcon}>⚡</Text>
+              <Text style={styles.transformTxt}>TRANSFORM QUEST!</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   fill:      { flex: 1 },
+  headerBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
+    marginBottom: 4,
+  },
+  back:        { width: 60 },
+  backTxt:     { color: '#FFF', fontSize: 15 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   container: { padding: 16, paddingBottom: 40 },
-  back:      { marginBottom: 12 },
-  backTxt:   { fontSize: 16 },
-  title:     { fontSize: 26, fontWeight: 'bold', color: '#FFF', marginBottom: 4 },
-  subtitle:  { fontSize: 15, color: '#FFF', marginBottom: 16 },
+  subtitle:  { fontSize: 15, marginBottom: 16 },
   guideBubble: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderRadius: 12, borderWidth: 2, padding: 12, marginBottom: 20,
+    backgroundColor: THEME.white, borderRadius: THEME.radiusCard,
+    borderLeftWidth: 5, padding: 14, marginBottom: 20,
+    ...THEME.shadow,
   },
   guideEmoji: { fontSize: 32 },
   guideText:  { flex: 1, fontSize: 13, lineHeight: 18 },
   camRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   camBtn: {
-    flex: 1, borderRadius: 12, paddingVertical: 16, alignItems: 'center', gap: 4,
-    elevation: 3,
+    flex: 1, borderRadius: THEME.radiusCard, paddingVertical: 16, alignItems: 'center', gap: 4,
+    elevation: 3, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
   },
   camBtnIcon: { fontSize: 28 },
   camBtnTxt:  { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
-  photoWrap:  { marginBottom: 16, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  photoWrap:  { marginBottom: 16, borderRadius: 16, overflow: 'hidden', position: 'relative' },
   photo:      { width: '100%', height: 200 },
   clearPhoto: {
     position: 'absolute', top: 8, right: 8,
@@ -207,13 +215,15 @@ const styles = StyleSheet.create({
   dividerTxt:  { fontSize: 12, fontWeight: 'bold' },
   inputLabel:  { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
   textInput: {
-    borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15,
-    minHeight: 110, marginBottom: 20,
+    backgroundColor: THEME.white, borderWidth: 2, borderRadius: 14,
+    padding: 14, fontSize: 15, minHeight: 110, marginBottom: 20,
+    ...THEME.shadow,
   },
   transformBtn: {
-    borderRadius: 16, paddingVertical: 18, alignItems: 'center',
+    borderRadius: 18, paddingVertical: 18, alignItems: 'center',
     flexDirection: 'row', justifyContent: 'center', gap: 8,
-    elevation: 6, minHeight: 60,
+    elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10,
+    minHeight: 60,
   },
   transformIcon: { fontSize: 24 },
   transformTxt:  { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
