@@ -4,7 +4,17 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { migrateStorageSchema, StorageService } from './src/services/StorageService';
+
+// Initialize Sentry crash reporting (production only)
+if (!__DEV__) {
+  Sentry.init({
+    dsn: 'https://4065b2bcc70cf900dab0693a9cfc7a75@o4511096152653824.ingest.us.sentry.io/4511096159010816',
+    enableInExpoDevelopment: false,
+    debug: false,
+  });
+}
 import WorldDashboard from './src/screens/WorldDashboard';
 import HeroProfiler from './src/screens/HeroProfiler';
 import MagicCamera from './src/screens/MagicCamera';

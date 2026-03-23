@@ -13,6 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "extra": {
+      "sentryDSN": "https://4065b2bcc70cf900dab0693a9cfc7a75@o4511096152653824.ingest.us.sentry.io/4511096159010816"
+    },
     "plugins": [
       [
         "expo-image-picker",
