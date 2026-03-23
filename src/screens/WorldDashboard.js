@@ -1,0 +1,193 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View, Text, TouchableOpacity, ScrollView, StyleSheet,
+  SafeAreaView, Animated, Dimensions,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from '@react-navigation/native';
+import { WORLDS } from '../constants/worlds';
+import { StorageService } from '../services/StorageService';
+import { THEME } from '../constants/theme';
+
+const { width } = Dimensions.get('window');
+const CARD_W = (width - 48) / 2;
+
+export default function WorldDashboard({ navigation }) {
+  const [activeWorld, setActiveWorld] = useState(WORLDS[0]);
+  const [relicCount, setRelicCount] = useState(0);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      StorageService.getActiveWorld().then(w => { if (w) setActiveWorld(w); });
+      StorageService.getRelics().then(r => setRelicCount(r.length));
+    }, []),
+  );
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 950, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 950, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const selectWorld = async (world) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActiveWorld(world);
+    await StorageService.setActiveWorld(world);
+  };
+
+  return (
+    <SafeAreaView style={[styles.fill, { backgroundColor: activeWorld.bgColor }]}>
+      {/* ── Coloured header bar ── */}
+      <View style={[styles.headerBar, { backgroundColor: activeWorld.headerBg }]}>
+        <View>
+          <Text style={styles.appName}>⚡ QuestLens</Text>
+          <Text style={[styles.tagline, { color: activeWorld.accentColor }]}>
+            Turn Boring into Boss Levels
+          </Text>
+        </View>
+        <View style={styles.headerBtns}>
+          <TouchableOpacity onPress={() => navigation.navigate('RewardRoom')} style={styles.iconBtn}>
+            <Text style={styles.iconBtnTxt}>🏆</Text>
+            {relicCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: activeWorld.accentColor }]}>
+                <Text style={styles.badgeTxt}>{relicCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.iconBtn}>
+            <Text style={styles.iconBtnTxt}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Guide greeting card ── */}
+      <View style={[styles.guideCard, { borderLeftColor: activeWorld.accentColor }]}>
+        <Text style={styles.guideEmoji}>{activeWorld.guideEmoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.guideName, { color: activeWorld.primaryColor }]}>{activeWorld.guide}</Text>
+          <Text style={[styles.guideText, { color: activeWorld.textColor }]}>
+            {activeWorld.guideGreeting}
+          </Text>
+        </View>
+      </View>
+
+      {/* ── World grid ── */}
+      <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>Pick Your World</Text>
+      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+        {WORLDS.map((world) => {
+          const isActive = world.id === activeWorld.id;
+          return (
+            <TouchableOpacity
+              key={world.id}
+              style={[
+                styles.worldCard,
+                { backgroundColor: world.primaryColor, width: CARD_W },
+                isActive && { borderColor: world.accentColor, borderWidth: 3 },
+              ]}
+              onPress={() => selectWorld(world)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.worldEmoji}>{world.emoji}</Text>
+              <Text style={styles.worldName} numberOfLines={1}>{world.name}</Text>
+              <Text style={[styles.worldGuide, { color: world.accentColor }]}>{world.guide}</Text>
+              {isActive && (
+                <View style={[styles.activePip, { backgroundColor: world.accentColor }]}>
+                  <Text style={styles.activePipTxt}>ACTIVE</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* ── Hero Profile button ── */}
+      <TouchableOpacity
+        style={[styles.profileBtn, { borderColor: activeWorld.primaryColor }]}
+        onPress={() => navigation.navigate('HeroProfiler')}
+      >
+        <Text style={[styles.profileBtnTxt, { color: activeWorld.primaryColor }]}>🧙 Set Up My Hero</Text>
+      </TouchableOpacity>
+
+      {/* ── Magic Camera button (pulsing) ── */}
+      <Animated.View style={[styles.cameraWrap, { transform: [{ scale: pulseAnim }] }]}>
+        <TouchableOpacity
+          style={[styles.cameraBtn, { backgroundColor: activeWorld.buttonColor }]}
+          onPress={() => navigation.navigate('MagicCamera', { world: activeWorld })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.cameraBtnIcon}>📸</Text>
+          <Text style={styles.cameraBtnTxt}>MAGIC CAMERA</Text>
+          <Text style={[styles.cameraBtnSub, { color: activeWorld.accentColor === '#FFD740' ? '#FFF8' : activeWorld.accentColor }]}>
+            Take a photo of your homework!
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  /* Header */
+  headerBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14,
+    borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+    marginBottom: 4,
+  },
+  appName:  { fontSize: 22, fontWeight: 'bold', color: '#FFF' },
+  tagline:  { fontSize: 11, marginTop: 1 },
+  headerBtns: { flexDirection: 'row', gap: 2 },
+  iconBtn: { padding: 8, position: 'relative' },
+  iconBtnTxt: { fontSize: 24 },
+  badge: {
+    position: 'absolute', top: 4, right: 4,
+    minWidth: 16, height: 16, borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 2,
+  },
+  badgeTxt: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
+  /* Guide card */
+  guideCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: THEME.white, marginHorizontal: 16, marginTop: 10, marginBottom: 6,
+    borderRadius: THEME.radiusCard, padding: 14,
+    borderLeftWidth: 5,
+    ...THEME.shadow,
+  },
+  guideEmoji: { fontSize: 36 },
+  guideName:  { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
+  guideText:  { fontSize: 13, lineHeight: 18 },
+  /* Section title */
+  sectionTitle: { fontSize: 13, fontWeight: 'bold', marginHorizontal: 16, marginBottom: 8, opacity: 0.75 },
+  /* World grid */
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 10, paddingBottom: 8 },
+  worldCard: { borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  worldEmoji: { fontSize: 28, marginBottom: 4 },
+  worldName:  { fontSize: 12, fontWeight: 'bold', color: '#FFF', textAlign: 'center' },
+  worldGuide: { fontSize: 10, marginTop: 2 },
+  activePip: { marginTop: 6, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  activePipTxt: { fontSize: 9, color: '#FFF', fontWeight: 'bold' },
+  /* Profile button */
+  profileBtn: {
+    marginHorizontal: 16, marginBottom: 8, borderRadius: THEME.radiusPill,
+    paddingVertical: 10, alignItems: 'center',
+    borderWidth: 2, backgroundColor: THEME.white,
+    ...THEME.shadow,
+  },
+  profileBtnTxt: { fontSize: 14, fontWeight: '700' },
+  /* Camera button */
+  cameraWrap: { paddingHorizontal: 16, paddingBottom: 16 },
+  cameraBtn: {
+    borderRadius: 20, paddingVertical: 18, alignItems: 'center',
+    elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10,
+  },
+  cameraBtnIcon: { fontSize: 40 },
+  cameraBtnTxt:  { fontSize: 22, fontWeight: 'bold', color: '#FFF', marginTop: 4 },
+  cameraBtnSub:  { fontSize: 12, marginTop: 2 },
+});
