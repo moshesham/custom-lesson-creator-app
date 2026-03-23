@@ -294,3 +294,95 @@ Start with one end-to-end vertical slice:
 - Display current level progress on dashboard (static 1-8 UI initially).
 
 This ships visible value quickly, preserves current app behavior, and creates the foundation for Quest Map, Brain Boxes, and trails.
+
+---
+
+## 14) Bare-Bones Expansion Blueprint (Critical Path to Start)
+
+This section defines the **minimum core modules** required to begin expansion safely. If a module is not listed here, it is optional for initial launch.
+
+### 14.1 Core module set (must-have first)
+
+1. **Learner Progression Module**
+   - **Purpose**: Anchor all content to grade band and level state.
+   - **Minimum v1 functionality**:
+     - select and store `gradeBand` (A-E),
+     - store `currentLevel` (1-8),
+     - determine mode (`review`, `core`, `preview`) from level.
+   - **Depends on**: Storage schema migration.
+   - **Primary files**: `src/services/StorageService.js`, `src/screens/HeroProfiler.js`, `src/screens/WorldDashboard.js`.
+
+2. **Quest Orchestration Module**
+   - **Purpose**: Generate quests with predictable structure for the selected grade band.
+   - **Minimum v1 functionality**:
+     - include grade band + mode in AI prompt input,
+     - keep existing 3-stage output structure,
+     - include one short Brain Box before Stage 2.
+   - **Depends on**: Learner Progression Module.
+   - **Primary files**: `src/services/AIService.js`, `src/screens/QuestDisplay.js`.
+
+3. **Support Profile Module (Neurodivergent-first baseline)**
+   - **Purpose**: Prevent overload and preserve continuity when learners struggle.
+   - **Minimum v1 functionality**:
+     - one-step instruction toggle,
+     - reduced sensory mode (build from existing Zen Mode),
+     - easier-branch output when Emergency Flare is used.
+   - **Depends on**: Quest Orchestration Module.
+   - **Primary files**: `src/screens/Settings.js`, `src/components/EmergencyFlare.js`, `src/utils/questPrompts.js`.
+
+4. **Progress Visibility Module**
+   - **Purpose**: Make success visible and predictable for child/caregiver.
+   - **Minimum v1 functionality**:
+     - show current level and next level on dashboard,
+     - mark quest completions against level progress,
+     - award existing relic flow without redesign.
+   - **Depends on**: Learner Progression + Storage.
+   - **Primary files**: `src/screens/WorldDashboard.js`, `src/screens/RewardRoom.js`.
+
+### 14.2 Non-module foundations (still required)
+
+- **Content taxonomy seed data**: minimal map of skills by grade band (math/literacy/science), even if coarse.
+- **Schema versioning in storage**: basic migration guard so old profiles do not break.
+- **AI fallback parity**: demo/offline quests must also respect grade band and mode.
+- **Safety guardrails**: age-appropriate wording and non-punitive phrasing enforced in prompt templates.
+
+### 14.3 What to explicitly defer (to avoid early bloat)
+
+Defer until core modules are stable:
+
+- full Quest Map screen with rich animations,
+- multi-trail branching and outdoor quest proof workflows,
+- caregiver analytics dashboards,
+- deep skill mastery engines and adaptive scoring,
+- new reward currencies or economy redesign.
+
+### 14.4 Bootstrap implementation order (strict)
+
+1. Storage migration + learner profile keys (`gradeBand`, `currentLevel`, `supportProfile`).
+2. HeroProfiler updates (grade band onboarding UI).
+3. AI prompt contract update (grade band + review/core/preview mode + Brain Box).
+4. QuestDisplay render support for Brain Box and easier-branch messaging.
+5. Settings baseline support toggles (one-step + sensory reduction).
+6. Dashboard progress labels + completion increments.
+7. Offline/demo quest parity with new contract.
+
+### 14.5 Definition of done for the “core-bones” milestone
+
+The expansion is considered started (and valid) only when all checks pass:
+
+- A child can choose grade band during onboarding and revisit it in settings.
+- Every generated quest reflects grade band and level mode (review/core/preview).
+- QuestDisplay shows at least one Brain Box before applied work.
+- Emergency flow can return an easier version of the same task (not a dead-end).
+- Dashboard clearly shows current level progress and next milestone.
+- Existing non-grade users migrate without data loss or crashes.
+
+### 14.6 Minimal backlog tickets to create immediately
+
+1. **Data**: Add profile migration and grade/level/support keys in `StorageService`.
+2. **UI**: Add grade-band selector in `HeroProfiler`.
+3. **AI**: Extend prompt schema with grade band + mode + Brain Box contract.
+4. **UI**: Render Brain Box block and easier-branch state in `QuestDisplay`.
+5. **UX**: Add one-step + reduced-sensory toggles in `Settings`.
+6. **UI/Data**: Add level progress indicator in `WorldDashboard`.
+7. **QA**: Manual test matrix for onboarding, quest generation, emergency fallback, and persistence.
