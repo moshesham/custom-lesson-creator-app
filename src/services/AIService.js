@@ -1,7 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WORLDS } from '../constants/worlds';
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+/* ── API endpoints ── */
+const OPENAI_URL  = 'https://api.openai.com/v1/chat/completions';
+const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const CLAUDE_URL  = 'https://api.anthropic.com/v1/messages';
+
+/* ── JSON extraction helper (tolerates markdown fences or extra prose) ── */
+function extractJSON(raw) {
+  if (typeof raw !== 'string') return raw;
+  const start = raw.indexOf('{');
+  const end   = raw.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('No JSON found in response');
+  return JSON.parse(raw.slice(start, end + 1));
+}
 
 const DEPTH_INSTRUCTIONS = {
   1: 'Apply very light theming — just add themed emoji/stickers. Keep the original text mostly intact.',
@@ -161,70 +172,179 @@ function getDemoQuest(world, homeworkText) {
   return demos[world.id] || demos['dino-wilds'];
 }
 
+/* ── Provider: OpenAI ── */
+async function callOpenAI(apiKey, systemPrompt, userMessage) {
+  const res = await fetch(OPENAI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 1000,
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenAI ${res.status}`);
+  const data = await res.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+async function callOpenAIVision(apiKey, systemPrompt, imageBase64) {
+  const res = await fetch(OPENAI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: systemPrompt },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+        ],
+      }],
+      response_format: { type: 'json_object' },
+      max_tokens: 1500,
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenAI Vision ${res.status}`);
+  const data = await res.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+/* ── Provider: Google Gemini ── */
+async function callGemini(apiKey, systemPrompt, userMessage) {
+  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] }],
+      generationConfig: { responseMimeType: 'application/json' },
+    }),
+  });
+  if (!res.ok) throw new Error(`Gemini ${res.status}`);
+  const data = await res.json();
+  return extractJSON(data.candidates[0].content.parts[0].text);
+}
+
+async function callGeminiVision(apiKey, systemPrompt, imageBase64) {
+  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: systemPrompt },
+          { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+        ],
+      }],
+      generationConfig: { responseMimeType: 'application/json' },
+    }),
+  });
+  if (!res.ok) throw new Error(`Gemini Vision ${res.status}`);
+  const data = await res.json();
+  return extractJSON(data.candidates[0].content.parts[0].text);
+}
+
+/* ── Provider: Anthropic Claude ── */
+async function callClaude(apiKey, systemPrompt, userMessage) {
+  const res = await fetch(CLAUDE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Claude ${res.status}`);
+  const data = await res.json();
+  return extractJSON(data.content[0].text);
+}
+
+async function callClaudeVision(apiKey, systemPrompt, imageBase64) {
+  const res = await fetch(CLAUDE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+          { type: 'text', text: 'Read the homework in this image and transform it into a quest. Return ONLY valid JSON.' },
+        ],
+      }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Claude Vision ${res.status}`);
+  const data = await res.json();
+  return extractJSON(data.content[0].text);
+}
+
+/* ── Engine key lookup ── */
+const ENGINE_STORAGE_KEYS = {
+  openai: 'openai_api_key',
+  gemini: 'gemini_api_key',
+  claude: 'claude_api_key',
+};
+
+async function getEngineAndKey() {
+  const engine = (await AsyncStorage.getItem('ql_ai_engine')) || 'openai';
+  const apiKey = await AsyncStorage.getItem(ENGINE_STORAGE_KEYS[engine] || 'openai_api_key');
+  return { engine, apiKey };
+}
+
+/* ── Public API ── */
 export async function transformHomeworkToQuest(homeworkText, world, learningStyle, fixationLevel = 3) {
-  const apiKey = await AsyncStorage.getItem('openai_api_key');
+  const { engine, apiKey } = await getEngineAndKey();
   if (!apiKey) return getDemoQuest(world, homeworkText);
 
+  const systemPrompt = buildSystemPrompt(world, learningStyle, fixationLevel);
+  const userMessage  = `Transform this homework into a quest: "${homeworkText}"`;
+
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: buildSystemPrompt(world, learningStyle, fixationLevel) },
-          { role: 'user', content: `Transform this homework into a quest: "${homeworkText}"` },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 1000,
-      }),
-    });
-    if (!response.ok) throw new Error(`API ${response.status}`);
-    const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
+    if (engine === 'gemini') return await callGemini(apiKey, systemPrompt, userMessage);
+    if (engine === 'claude') return await callClaude(apiKey, systemPrompt, userMessage);
+    return await callOpenAI(apiKey, systemPrompt, userMessage);
   } catch (err) {
-    console.warn('AI error, falling back to demo:', err.message);
+    console.warn(`${engine} error, using demo:`, err.message);
     return getDemoQuest(world, homeworkText);
   }
 }
 
 export async function analyzeHomeworkImage(imageBase64, world, learningStyle, fixationLevel = 3) {
-  const apiKey = await AsyncStorage.getItem('openai_api_key');
+  const { engine, apiKey } = await getEngineAndKey();
   if (!apiKey) return getDemoQuest(world, 'homework from photo');
 
+  const systemPrompt = buildSystemPrompt(world, learningStyle, fixationLevel) +
+    '\n\nRead the homework problem visible in the attached image and transform it into a quest. Return ONLY valid JSON.';
+
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Read the homework problem in this image, then transform it into a quest for world "${world.name}" (guide: ${world.guide}). Learning style: ${learningStyle}. Theming depth (1-5): ${fixationLevel}.\n\nReturn ONLY valid JSON: { questTitle, objective, stage1:{title,content}, stage2:{title,content}, stage3:{title,content}, hint, rewardName, rewardDescription, imagePrompt, simplifiedStep }`,
-              },
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
-            ],
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 1500,
-      }),
-    });
-    if (!response.ok) throw new Error(`API ${response.status}`);
-    const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
+    if (engine === 'gemini') return await callGeminiVision(apiKey, systemPrompt, imageBase64);
+    if (engine === 'claude') return await callClaudeVision(apiKey, systemPrompt, imageBase64);
+    return await callOpenAIVision(apiKey, systemPrompt, imageBase64);
   } catch (err) {
-    console.warn('Vision error, falling back to demo:', err.message);
+    console.warn(`${engine} vision error, using demo:`, err.message);
     return getDemoQuest(world, 'homework from photo');
   }
 }
+
+export const AI_ENGINES = [
+  { id: 'openai', label: 'OpenAI',  subtitle: 'GPT-4o (best overall)',      emoji: '🤖', keyPrefix: 'sk-' },
+  { id: 'gemini', label: 'Gemini',  subtitle: 'Google (fast & free tier)',   emoji: '✨', keyPrefix: 'AIza' },
+  { id: 'claude', label: 'Claude',  subtitle: 'Anthropic (great reasoning)', emoji: '🧠', keyPrefix: 'sk-ant-' },
+];

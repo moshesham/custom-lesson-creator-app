@@ -5,7 +5,12 @@ const KEYS = {
   LEARNING_STYLE:  'ql_learning_style',
   HERO_NAME:       'ql_hero_name',
   RELICS:          'ql_relics',
+  // legacy key kept so old saves still work
   API_KEY:         'openai_api_key',
+  OPENAI_KEY:      'openai_api_key',
+  GEMINI_KEY:      'gemini_api_key',
+  CLAUDE_KEY:      'claude_api_key',
+  AI_ENGINE:       'ql_ai_engine',
   FIXATION_LEVEL:  'ql_fixation_level',
   ZEN_MODE:        'ql_zen_mode',
 };
@@ -64,9 +69,21 @@ export const StorageService = {
   },
 
   async getApiKey() {
-    return AsyncStorage.getItem(KEYS.API_KEY);
+    return AsyncStorage.getItem(KEYS.OPENAI_KEY);
   },
   async setApiKey(key) {
-    await AsyncStorage.setItem(KEYS.API_KEY, key);
+    await AsyncStorage.setItem(KEYS.OPENAI_KEY, key);
   },
+
+  async getOpenAIKey()  { return AsyncStorage.getItem(KEYS.OPENAI_KEY); },
+  async setOpenAIKey(k) { await AsyncStorage.setItem(KEYS.OPENAI_KEY, k); },
+
+  async getGeminiKey()  { return AsyncStorage.getItem(KEYS.GEMINI_KEY); },
+  async setGeminiKey(k) { await AsyncStorage.setItem(KEYS.GEMINI_KEY, k); },
+
+  async getClaudeKey()  { return AsyncStorage.getItem(KEYS.CLAUDE_KEY); },
+  async setClaudeKey(k) { await AsyncStorage.setItem(KEYS.CLAUDE_KEY, k); },
+
+  async getAIEngine()  { return (await AsyncStorage.getItem(KEYS.AI_ENGINE)) || 'openai'; },
+  async setAIEngine(e) { await AsyncStorage.setItem(KEYS.AI_ENGINE, e); },
 };
