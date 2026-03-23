@@ -144,7 +144,7 @@ Embed support options as first-class configuration (not hidden accessibility ext
 
 Add domain constants and persisted learner profile fields:
 
-## Proposed new constants
+### 7.1 Proposed new constants
 
 - `gradeBands`
 - `levelDefinitions` (1-8 metadata)
@@ -152,7 +152,7 @@ Add domain constants and persisted learner profile fields:
 - `brainBoxTemplates`
 - `skillTaxonomy` (math, literacy, science, executive-function)
 
-## Proposed profile fields (StorageService)
+### 7.2 Proposed profile fields (StorageService)
 
 - `gradeBand`
 - `currentLevel`
@@ -186,37 +186,37 @@ Define strict JSON schema and fallback behavior when AI output is malformed.
 
 ## 9) UI/UX Implementation Phases
 
-## Phase 0: Foundations (minimal risk)
+### 9.1 Phase 0: Foundations (minimal risk)
 
 - Add grade band selector to `HeroProfiler`
 - Add basic level tracker to `WorldDashboard`
 - Add roadmap and visible "current level" label
 
-## Phase 1: Quest Map and levels
+### 9.2 Phase 1: Quest Map and levels
 
 - New Quest Map screen (or dashboard section) with level nodes 1-8
 - Unlock logic tied to completion and support profile pacing rules
 - Show vertical progression and next milestone reward
 
-## Phase 2: Brain Boxes + interdisciplinary flow
+### 9.3 Phase 2: Brain Boxes + interdisciplinary flow
 
 - Render pre-challenge Brain Box in `QuestDisplay`
 - Add cross-subject quest templates
 - Add theme-linked narrative transitions between subject tasks
 
-## Phase 3: Horizontal trails + outdoor quests
+### 9.4 Phase 3: Horizontal trails + outdoor quests
 
 - Trail selector (Math/Story/Science/Outdoor/Regulation)
 - Outdoor quest capture support (camera + checklist proof)
 - Return to main path with completion credit
 
-## Phase 4: Neurodivergent-first support center
+### 9.5 Phase 4: Neurodivergent-first support center
 
 - Expand Settings into dedicated Support Profile setup
 - Add one-step mode, communication mode choices, and routine visualizer
 - Add partial-credit route when learner de-escalates and re-engages
 
-## Phase 5: Progress analytics for caregivers (local-first)
+### 9.6 Phase 5: Progress analytics for caregivers (local-first)
 
 - Session summaries focused on strengths and preferred supports
 - Skill heatmap by grade-band targets
