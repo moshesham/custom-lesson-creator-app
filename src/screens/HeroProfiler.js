@@ -25,7 +25,8 @@ export default function HeroProfiler({ navigation }) {
     await StorageService.setHeroName(heroName.trim());
     await StorageService.setLearningStyle(style);
     setSaved(true);
-    setTimeout(() => navigation.goBack(), 900);
+    const timer = setTimeout(() => navigation.goBack(), 900);
+    return () => clearTimeout(timer);
   };
 
   return (

@@ -19,6 +19,7 @@
     "expo-image-picker": "^55.0.13",
     "expo-linear-gradient": "^55.0.9",
     "expo-print": "^55.0.9",
+    "expo-secure-store": "~14.2.0",
     "expo-sharing": "^55.0.14",
     "expo-speech": "^55.0.9",
     "expo-status-bar": "~55.0.4",
@@ -27,6 +28,9 @@
     "react-native-gesture-handler": "^2.30.0",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0"
+  },
+  "devDependencies": {
+    "eas-cli": "^15.0.0"
   },
   "private": true
 }

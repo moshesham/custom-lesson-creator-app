@@ -1,18 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
+// Non-sensitive preferences stored in AsyncStorage
 const KEYS = {
   ACTIVE_WORLD:    'ql_active_world',
   LEARNING_STYLE:  'ql_learning_style',
   HERO_NAME:       'ql_hero_name',
   RELICS:          'ql_relics',
-  // legacy key kept so old saves still work
-  API_KEY:         'openai_api_key',
-  OPENAI_KEY:      'openai_api_key',
-  GEMINI_KEY:      'gemini_api_key',
-  CLAUDE_KEY:      'claude_api_key',
   AI_ENGINE:       'ql_ai_engine',
   FIXATION_LEVEL:  'ql_fixation_level',
   ZEN_MODE:        'ql_zen_mode',
+};
+
+// API keys stored in the device's secure enclave (Android Keystore)
+const SECURE_KEYS = {
+  OPENAI_KEY: 'ql_openai_api_key',
+  GEMINI_KEY: 'ql_gemini_api_key',
+  CLAUDE_KEY: 'ql_claude_api_key',
 };
 
 export const StorageService = {
@@ -68,21 +72,17 @@ export const StorageService = {
     await AsyncStorage.setItem(KEYS.ZEN_MODE, value ? 'true' : 'false');
   },
 
-  async getApiKey() {
-    return AsyncStorage.getItem(KEYS.OPENAI_KEY);
-  },
-  async setApiKey(key) {
-    await AsyncStorage.setItem(KEYS.OPENAI_KEY, key);
-  },
+  async getApiKey()  { return SecureStore.getItemAsync(SECURE_KEYS.OPENAI_KEY); },
+  async setApiKey(k) { await SecureStore.setItemAsync(SECURE_KEYS.OPENAI_KEY, k ?? ''); },
 
-  async getOpenAIKey()  { return AsyncStorage.getItem(KEYS.OPENAI_KEY); },
-  async setOpenAIKey(k) { await AsyncStorage.setItem(KEYS.OPENAI_KEY, k); },
+  async getOpenAIKey()  { return SecureStore.getItemAsync(SECURE_KEYS.OPENAI_KEY); },
+  async setOpenAIKey(k) { await SecureStore.setItemAsync(SECURE_KEYS.OPENAI_KEY, k ?? ''); },
 
-  async getGeminiKey()  { return AsyncStorage.getItem(KEYS.GEMINI_KEY); },
-  async setGeminiKey(k) { await AsyncStorage.setItem(KEYS.GEMINI_KEY, k); },
+  async getGeminiKey()  { return SecureStore.getItemAsync(SECURE_KEYS.GEMINI_KEY); },
+  async setGeminiKey(k) { await SecureStore.setItemAsync(SECURE_KEYS.GEMINI_KEY, k ?? ''); },
 
-  async getClaudeKey()  { return AsyncStorage.getItem(KEYS.CLAUDE_KEY); },
-  async setClaudeKey(k) { await AsyncStorage.setItem(KEYS.CLAUDE_KEY, k); },
+  async getClaudeKey()  { return SecureStore.getItemAsync(SECURE_KEYS.CLAUDE_KEY); },
+  async setClaudeKey(k) { await SecureStore.setItemAsync(SECURE_KEYS.CLAUDE_KEY, k ?? ''); },
 
   async getAIEngine()  { return (await AsyncStorage.getItem(KEYS.AI_ENGINE)) || 'openai'; },
   async setAIEngine(e) { await AsyncStorage.setItem(KEYS.AI_ENGINE, e); },

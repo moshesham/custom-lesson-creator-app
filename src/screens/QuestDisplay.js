@@ -182,7 +182,7 @@ export default function QuestDisplay({ navigation, route }) {
             <Text style={styles.rewardDesc}>{quest?.rewardDescription || 'Added to your trophy room!'}</Text>
             <TouchableOpacity
               style={[styles.rewardBtn, { backgroundColor: activeWorld.buttonColor }]}
-              onPress={() => { setShowReward(false); navigation.navigate('WorldDashboard'); }}
+              onPress={() => { setShowReward(false); navigation.reset({ index: 0, routes: [{ name: 'WorldDashboard' }] }); }}
             >
               <Text style={styles.rewardBtnTxt}>Back to Home 🏠</Text>
             </TouchableOpacity>

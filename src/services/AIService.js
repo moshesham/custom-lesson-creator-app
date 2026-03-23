@@ -1,9 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StorageService } from './StorageService';
 
 /* ── API endpoints ── */
 const OPENAI_URL  = 'https://api.openai.com/v1/chat/completions';
 const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const CLAUDE_URL  = 'https://api.anthropic.com/v1/messages';
+
+const FETCH_TIMEOUT_MS = 20000;
+
+/* ── Fetch with timeout (prevents infinite spinner) ── */
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /* ── JSON extraction helper (tolerates markdown fences or extra prose) ── */
 function extractJSON(raw) {
@@ -174,7 +187,7 @@ function getDemoQuest(world, homeworkText) {
 
 /* ── Provider: OpenAI ── */
 async function callOpenAI(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetchWithTimeout(OPENAI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -193,7 +206,7 @@ async function callOpenAI(apiKey, systemPrompt, userMessage) {
 }
 
 async function callOpenAIVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetchWithTimeout(OPENAI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -216,7 +229,7 @@ async function callOpenAIVision(apiKey, systemPrompt, imageBase64) {
 
 /* ── Provider: Google Gemini ── */
 async function callGemini(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetchWithTimeout(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -230,7 +243,7 @@ async function callGemini(apiKey, systemPrompt, userMessage) {
 }
 
 async function callGeminiVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetchWithTimeout(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -250,7 +263,7 @@ async function callGeminiVision(apiKey, systemPrompt, imageBase64) {
 
 /* ── Provider: Anthropic Claude ── */
 async function callClaude(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(CLAUDE_URL, {
+  const res = await fetchWithTimeout(CLAUDE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -270,7 +283,7 @@ async function callClaude(apiKey, systemPrompt, userMessage) {
 }
 
 async function callClaudeVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(CLAUDE_URL, {
+  const res = await fetchWithTimeout(CLAUDE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -296,15 +309,12 @@ async function callClaudeVision(apiKey, systemPrompt, imageBase64) {
 }
 
 /* ── Engine key lookup ── */
-const ENGINE_STORAGE_KEYS = {
-  openai: 'openai_api_key',
-  gemini: 'gemini_api_key',
-  claude: 'claude_api_key',
-};
-
 async function getEngineAndKey() {
-  const engine = (await AsyncStorage.getItem('ql_ai_engine')) || 'openai';
-  const apiKey = await AsyncStorage.getItem(ENGINE_STORAGE_KEYS[engine] || 'openai_api_key');
+  const engine = await StorageService.getAIEngine();
+  let apiKey;
+  if (engine === 'gemini')      apiKey = await StorageService.getGeminiKey();
+  else if (engine === 'claude') apiKey = await StorageService.getClaudeKey();
+  else                          apiKey = await StorageService.getOpenAIKey();
   return { engine, apiKey };
 }
 
