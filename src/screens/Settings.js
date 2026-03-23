@@ -3,36 +3,46 @@ import {
   View, Text, TouchableOpacity, TextInput, Switch, ScrollView,
   StyleSheet, SafeAreaView, Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { WORLDS } from '../constants/worlds';
 import { StorageService } from '../services/StorageService';
+import { AI_ENGINES } from '../services/AIService';
 import { buildPrintableHTML } from '../utils/questPrompts';
+import { THEME } from '../constants/theme';
 
 const LEVELS     = [1, 2, 3, 4, 5];
 const LVL_LABELS = { 1: 'Sprinkle 🌱', 2: 'Light 🌿', 3: 'Medium 🔥', 4: 'Heavy 🌋', 5: 'MAX 💥' };
 
 export default function Settings({ navigation }) {
-  const [activeWorld,    setActiveWorld]    = useState(WORLDS[0]);
-  const [apiKey,         setApiKey]         = useState('');
-  const [apiKeyVisible,  setApiKeyVisible]  = useState(false);
-  const [fixation,       setFixation]       = useState(3);
-  const [zenMode,        setZenMode]        = useState(false);
-  const [saved,          setSaved]          = useState(false);
+  const [activeWorld,   setActiveWorld]   = useState(WORLDS[0]);
+  const [aiEngine,      setAiEngine]      = useState('openai');
+  const [openaiKey,     setOpenaiKey]     = useState('');
+  const [geminiKey,     setGeminiKey]     = useState('');
+  const [claudeKey,     setClaudeKey]     = useState('');
+  const [keyVisible,    setKeyVisible]    = useState({});
+  const [fixation,      setFixation]      = useState(3);
+  const [zenMode,       setZenMode]       = useState(false);
+  const [saved,         setSaved]         = useState(false);
 
   useEffect(() => {
     StorageService.getActiveWorld().then(w => { if (w) setActiveWorld(w); });
-    StorageService.getApiKey().then(k => { if (k) setApiKey(k); });
+    StorageService.getAIEngine().then(e => setAiEngine(e));
+    StorageService.getOpenAIKey().then(k => { if (k) setOpenaiKey(k); });
+    StorageService.getGeminiKey().then(k => { if (k) setGeminiKey(k); });
+    StorageService.getClaudeKey().then(k => { if (k) setClaudeKey(k); });
     StorageService.getFixationLevel().then(f => setFixation(f));
     StorageService.getZenMode().then(z => setZenMode(z));
   }, []);
 
   const saveAll = async () => {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await StorageService.setApiKey(apiKey.trim());
+    await StorageService.setAIEngine(aiEngine);
+    await StorageService.setOpenAIKey(openaiKey.trim());
+    await StorageService.setGeminiKey(geminiKey.trim());
+    await StorageService.setClaudeKey(claudeKey.trim());
     await StorageService.setFixationLevel(fixation);
     await StorageService.setZenMode(zenMode);
     setSaved(true);
@@ -40,7 +50,6 @@ export default function Settings({ navigation }) {
   };
 
   const printLastQuest = async () => {
-    // Build a sample quest for demo
     const heroName = await StorageService.getHeroName();
     const html = buildPrintableHTML(
       {
@@ -51,8 +60,7 @@ export default function Settings({ navigation }) {
         stage3: { title: activeWorld.terms.stage3, content: 'Victory is yours!' },
         hint: 'Try re-reading the first step.',
       },
-      activeWorld,
-      heroName,
+      activeWorld, heroName,
     );
     let uri = null;
     try {
@@ -70,135 +78,233 @@ export default function Settings({ navigation }) {
     }
   };
 
+  const toggleKeyVisible = (id) => setKeyVisible(v => ({ ...v, [id]: !v[id] }));
+
+  const KEY_VALUES = { openai: openaiKey, gemini: geminiKey, claude: claudeKey };
+  const KEY_SETTERS = { openai: setOpenaiKey, gemini: setGeminiKey, claude: setClaudeKey };
+
   return (
-    <LinearGradient colors={[activeWorld.bgColor, activeWorld.primaryColor]} style={styles.fill}>
-      <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.container}>
-          {/* Back */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-            <Text style={[styles.backTxt, { color: activeWorld.textColor }]}>← Back</Text>
+    <SafeAreaView style={[styles.fill, { backgroundColor: activeWorld.bgColor }]}>
+      <ScrollView contentContainerStyle={styles.container}>
+
+        {/* ── Header bar ── */}
+        <View style={[styles.headerBar, { backgroundColor: activeWorld.headerBg }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backBtnTxt}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>⚙️ Settings</Text>
+          <Text style={styles.headerTitle}>⚙️ Settings</Text>
+          <View style={{ width: 60 }} />
+        </View>
 
-          {/* API Key */}
-          <Text style={[styles.label, { color: activeWorld.accentColor }]}>🔑 OpenAI API Key</Text>
-          <Text style={[styles.hint, { color: activeWorld.textColor + '88' }]}>
-            Add your key to use AI. Without it, demo quests are used.
-          </Text>
-          <View style={styles.apiRow}>
-            <TextInput
-              style={[styles.apiInput, { color: activeWorld.textColor, borderColor: activeWorld.accentColor + '55' }]}
-              placeholder="sk-..."
-              placeholderTextColor={activeWorld.textColor + '44'}
-              value={apiKey}
-              onChangeText={setApiKey}
-              secureTextEntry={!apiKeyVisible}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity onPress={() => setApiKeyVisible(v => !v)} style={styles.eyeBtn}>
-              <Text style={styles.eyeIcon}>{apiKeyVisible ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
+        {/* ── AI Engine selector ── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>🤖 AI Engine</Text>
+          <Text style={styles.sectionHint}>Choose your AI assistant. Add your API key below.</Text>
+          <View style={styles.engineRow}>
+            {AI_ENGINES.map(eng => (
+              <TouchableOpacity
+                key={eng.id}
+                style={[
+                  styles.engineCard,
+                  aiEngine === eng.id && { borderColor: activeWorld.accentColor, borderWidth: 3, backgroundColor: activeWorld.accentColor + '15' },
+                ]}
+                onPress={async () => { await Haptics.selectionAsync(); setAiEngine(eng.id); }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.engineEmoji}>{eng.emoji}</Text>
+                <Text style={[styles.engineLabel, aiEngine === eng.id && { color: activeWorld.primaryColor }]}>
+                  {eng.label}
+                </Text>
+                <Text style={styles.engineSub}>{eng.subtitle}</Text>
+                {aiEngine === eng.id && (
+                  <View style={[styles.activePip, { backgroundColor: activeWorld.accentColor }]}>
+                    <Text style={styles.activePipTxt}>ACTIVE</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
           </View>
+        </View>
 
-          {/* Fixation slider */}
-          <Text style={[styles.label, { color: activeWorld.accentColor }]}>🎚️ Fixation Depth</Text>
-          <Text style={[styles.hint, { color: activeWorld.textColor + '88' }]}>
-            How deep should the theming go?
+        {/* ── API Keys ── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>🔑 API Keys</Text>
+          <Text style={styles.sectionHint}>
+            Without a key the app uses built-in demo quests — fully working for testing!
           </Text>
+          {AI_ENGINES.map(eng => (
+            <View key={eng.id} style={styles.keyBlock}>
+              <Text style={[styles.keyLabel, { color: activeWorld.primaryColor }]}>
+                {eng.emoji} {eng.label} Key
+                {aiEngine === eng.id && (
+                  <Text style={{ color: activeWorld.accentColor }}> (active)</Text>
+                )}
+              </Text>
+              <View style={styles.keyRow}>
+                <TextInput
+                  style={[styles.keyInput, { borderColor: aiEngine === eng.id ? activeWorld.accentColor : '#DDD' }]}
+                  placeholder={`${eng.keyPrefix}...`}
+                  placeholderTextColor="#BBB"
+                  value={KEY_VALUES[eng.id]}
+                  onChangeText={KEY_SETTERS[eng.id]}
+                  secureTextEntry={!keyVisible[eng.id]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity onPress={() => toggleKeyVisible(eng.id)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeIcon}>{keyVisible[eng.id] ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Fixation Depth ── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>🎚️ Fixation Depth</Text>
+          <Text style={styles.sectionHint}>How deep should the theming go?</Text>
           <View style={styles.levelRow}>
             {LEVELS.map(lvl => (
               <TouchableOpacity
                 key={lvl}
                 style={[
                   styles.lvlBtn,
-                  { backgroundColor: activeWorld.primaryColor },
-                  fixation === lvl && { backgroundColor: activeWorld.buttonColor, borderColor: activeWorld.accentColor },
+                  fixation === lvl && { backgroundColor: activeWorld.buttonColor, borderColor: activeWorld.buttonColor },
                 ]}
                 onPress={async () => { await Haptics.selectionAsync(); setFixation(lvl); }}
               >
-                <Text style={[styles.lvlNum, { color: fixation === lvl ? '#FFF' : activeWorld.textColor + '88' }]}>{lvl}</Text>
+                <Text style={[styles.lvlNum, { color: fixation === lvl ? '#FFF' : activeWorld.primaryColor }]}>{lvl}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={[styles.lvlLabel, { color: activeWorld.textColor }]}>
-            Current: {LVL_LABELS[fixation]}
+          <Text style={[styles.lvlLabel, { color: activeWorld.primaryColor }]}>
+            {LVL_LABELS[fixation]}
           </Text>
-          <Text style={[styles.lvlDesc, { color: activeWorld.textColor + '77' }]}>
+          <Text style={styles.lvlDesc}>
             {fixation === 1 && 'Just themed stickers on the page.'}
-            {fixation === 2 && 'Key terms renamed to fit the theme.'}
-            {fixation === 3 && 'Problem rewritten in the world\'s story.'}
-            {fixation === 4 && 'Fully immersed in the world\'s lore.'}
+            {fixation === 2 && "Key terms renamed to fit the theme."}
+            {fixation === 3 && "Problem rewritten in the world's story."}
+            {fixation === 4 && "Fully immersed in the world's lore."}
             {fixation === 5 && 'Entire math logic rewritten in the lore!'}
           </Text>
+        </View>
 
-          {/* Zen mode */}
+        {/* ── Zen Mode ── */}
+        <View style={styles.section}>
           <View style={styles.zenRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { color: activeWorld.accentColor, marginBottom: 0 }]}>🧘 Zen Mode</Text>
-              <Text style={[styles.hint, { color: activeWorld.textColor + '88', marginBottom: 0 }]}>
-                Reduce animations for calmer focus
-              </Text>
+              <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor, marginBottom: 2 }]}>🧘 Zen Mode</Text>
+              <Text style={styles.sectionHint}>Reduce animations for calmer focus</Text>
             </View>
             <Switch
               value={zenMode}
-              onValueChange={async (v) => { await Haptics.selectionAsync(); setZenMode(v); }}
-              trackColor={{ false: '#555', true: activeWorld.accentColor }}
-              thumbColor={zenMode ? activeWorld.buttonColor : '#888'}
+              onValueChange={async v => { await Haptics.selectionAsync(); setZenMode(v); }}
+              trackColor={{ false: '#CCC', true: activeWorld.accentColor }}
+              thumbColor={zenMode ? activeWorld.buttonColor : '#FFF'}
             />
           </View>
+        </View>
 
-          {/* Paper Bridge */}
-          <Text style={[styles.label, { color: activeWorld.accentColor }]}>📄 Paper Bridge</Text>
-          <Text style={[styles.hint, { color: activeWorld.textColor + '88' }]}>
+        {/* ── Paper Bridge ── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>📄 Paper Bridge</Text>
+          <Text style={styles.sectionHint}>
             Print a Quest Map — do work on paper, then snap to submit!
           </Text>
           <TouchableOpacity
-            style={[styles.printBtn, { backgroundColor: activeWorld.primaryColor }]}
+            style={[styles.printBtn, { borderColor: activeWorld.primaryColor }]}
             onPress={printLastQuest}
           >
-            <Text style={[styles.printBtnTxt, { color: activeWorld.textColor }]}>🖨️ Print Sample Quest Map</Text>
+            <Text style={[styles.printBtnTxt, { color: activeWorld.primaryColor }]}>
+              🖨️ Print Sample Quest Map
+            </Text>
           </TouchableOpacity>
+        </View>
 
-          {/* Save */}
-          <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: saved ? '#388E3C' : activeWorld.buttonColor }]}
-            onPress={saveAll}
-          >
-            <Text style={styles.saveBtnTxt}>{saved ? '✓ Saved!' : 'Save Settings'}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        {/* ── Save ── */}
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: saved ? '#388E3C' : activeWorld.buttonColor }]}
+          onPress={saveAll}
+        >
+          <Text style={styles.saveBtnTxt}>{saved ? '✓ Saved!' : 'Save Settings'}</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   fill:      { flex: 1 },
-  container: { padding: 16, paddingBottom: 40 },
-  back:      { marginBottom: 12 },
-  backTxt:   { fontSize: 16 },
-  title:     { fontSize: 26, fontWeight: 'bold', color: '#FFF', marginBottom: 20 },
-  label:     { fontSize: 14, fontWeight: 'bold', marginBottom: 4, marginTop: 16 },
-  hint:      { fontSize: 12, marginBottom: 8 },
-  apiRow:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  apiInput: {
-    flex: 1, borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
+  container: { paddingBottom: 48 },
+  /* Header bar */
+  headerBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14, marginBottom: 8,
+    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  eyeBtn:  { padding: 10 },
+  backBtn:      { width: 60 },
+  backBtnTxt:   { color: '#FFF', fontSize: 15 },
+  headerTitle:  { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  /* Sections */
+  section: {
+    backgroundColor: THEME.white,
+    marginHorizontal: 16, marginTop: 12,
+    borderRadius: THEME.radiusCard,
+    padding: 16,
+    ...THEME.shadow,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  sectionHint:  { fontSize: 12, color: THEME.textLight, marginBottom: 10 },
+  /* Engine selector */
+  engineRow: { flexDirection: 'row', gap: 8 },
+  engineCard: {
+    flex: 1, borderRadius: 14, borderWidth: 2, borderColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA', padding: 10, alignItems: 'center',
+    position: 'relative',
+  },
+  engineEmoji: { fontSize: 24, marginBottom: 4 },
+  engineLabel: { fontSize: 13, fontWeight: 'bold', color: THEME.textDark, marginBottom: 2 },
+  engineSub:   { fontSize: 10, color: THEME.textLight, textAlign: 'center' },
+  activePip: {
+    marginTop: 6, paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 8,
+  },
+  activePipTxt: { fontSize: 9, color: '#FFF', fontWeight: 'bold' },
+  /* API keys */
+  keyBlock: { marginBottom: 12 },
+  keyLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  keyRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  keyInput: {
+    flex: 1, borderWidth: 2, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 9,
+    fontSize: 13, color: THEME.textDark, backgroundColor: '#FAFAFA',
+  },
+  eyeBtn:  { padding: 8 },
   eyeIcon: { fontSize: 20 },
-  levelRow:{ flexDirection: 'row', gap: 8, marginBottom: 8 },
+  /* Fixation */
+  levelRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   lvlBtn: {
     flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center',
-    borderWidth: 2, borderColor: 'transparent',
+    borderWidth: 2, borderColor: '#E0E0E0', backgroundColor: '#FAFAFA',
   },
   lvlNum:  { fontSize: 16, fontWeight: 'bold' },
-  lvlLabel:{ fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  lvlDesc: { fontSize: 12, marginBottom: 8, lineHeight: 18 },
-  zenRow:  { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 },
-  printBtn:{ borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 4, marginBottom: 8 },
+  lvlLabel:{ fontSize: 14, fontWeight: '700', color: THEME.textDark, marginBottom: 2 },
+  lvlDesc: { fontSize: 12, color: THEME.textLight, lineHeight: 18 },
+  /* Zen mode */
+  zenRow: { flexDirection: 'row', alignItems: 'center' },
+  /* Paper bridge */
+  printBtn: {
+    borderRadius: 10, paddingVertical: 12, alignItems: 'center',
+    borderWidth: 2, marginTop: 4,
+  },
   printBtnTxt: { fontSize: 14, fontWeight: '600' },
-  saveBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 16, elevation: 4 },
+  /* Save */
+  saveBtn: {
+    marginHorizontal: 16, marginTop: 16,
+    borderRadius: THEME.radiusBtn, paddingVertical: 18, alignItems: 'center',
+    elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8,
+  },
   saveBtnTxt: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
 });
+
