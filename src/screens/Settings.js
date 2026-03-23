@@ -13,19 +13,19 @@ import { AI_ENGINES } from '../services/AIService';
 import { buildPrintableHTML } from '../utils/questPrompts';
 import { THEME } from '../constants/theme';
 
-const LEVELS     = [1, 2, 3, 4, 5];
+const LEVELS = [1, 2, 3, 4, 5];
 const LVL_LABELS = { 1: 'Sprinkle 🌱', 2: 'Light 🌿', 3: 'Medium 🔥', 4: 'Heavy 🌋', 5: 'MAX 💥' };
 
 export default function Settings({ navigation }) {
-  const [activeWorld,   setActiveWorld]   = useState(WORLDS[0]);
-  const [aiEngine,      setAiEngine]      = useState('openai');
-  const [openaiKey,     setOpenaiKey]     = useState('');
-  const [geminiKey,     setGeminiKey]     = useState('');
-  const [claudeKey,     setClaudeKey]     = useState('');
-  const [keyVisible,    setKeyVisible]    = useState({});
-  const [fixation,      setFixation]      = useState(3);
-  const [zenMode,       setZenMode]       = useState(false);
-  const [saved,         setSaved]         = useState(false);
+  const [activeWorld, setActiveWorld] = useState(WORLDS[0]);
+  const [aiEngine, setAiEngine] = useState('openai');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [claudeKey, setClaudeKey] = useState('');
+  const [keyVisible, setKeyVisible] = useState({});
+  const [fixation, setFixation] = useState(3);
+  const [zenMode, setZenMode] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     StorageService.getActiveWorld().then(w => { if (w) setActiveWorld(w); });
@@ -54,7 +54,7 @@ export default function Settings({ navigation }) {
     const html = buildPrintableHTML(
       {
         questTitle: 'Sample Quest Map',
-        objective:  'Complete this sample to see the Paper Bridge!',
+        objective: 'Complete this sample to see the Paper Bridge!',
         stage1: { title: activeWorld.terms.stage1, content: 'This is where the adventure begins...' },
         stage2: { title: activeWorld.terms.stage2, content: 'Work through the challenge here.' },
         stage3: { title: activeWorld.terms.stage3, content: 'Victory is yours!' },
@@ -74,7 +74,7 @@ export default function Settings({ navigation }) {
     } catch (e) {
       Alert.alert('Print Error', 'Could not create PDF. Try again.');
     } finally {
-      if (uri) FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+      if (uri) FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => { });
     }
   };
 
@@ -229,13 +229,27 @@ export default function Settings({ navigation }) {
           <Text style={styles.saveBtnTxt}>{saved ? '✓ Saved!' : 'Save Settings'}</Text>
         </TouchableOpacity>
 
+        {/* ── Parental Controls (COPPA) ── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: activeWorld.primaryColor }]}>🛡️ Parental Controls</Text>
+          <TouchableOpacity
+            style={[styles.parentalButton, { backgroundColor: activeWorld.accentColor }]}
+            onPress={() => navigation.navigate('ParentalDashboard')}
+          >
+            <Text style={styles.parentalButtonText}>Open Parental Dashboard</Text>
+          </TouchableOpacity>
+          <Text style={styles.parentalHint}>
+            View quest history, export progress, or delete all data. Requires parent verification.
+          </Text>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  fill:      { flex: 1 },
+  fill: { flex: 1 },
   container: { paddingBottom: 48 },
   /* Header bar */
   headerBar: {
@@ -243,9 +257,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14, marginBottom: 8,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  backBtn:      { width: 60 },
-  backBtnTxt:   { color: '#FFF', fontSize: 15 },
-  headerTitle:  { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  backBtn: { width: 60 },
+  backBtnTxt: { color: '#FFF', fontSize: 15 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   /* Sections */
   section: {
     backgroundColor: THEME.white,
@@ -255,7 +269,7 @@ const styles = StyleSheet.create({
     ...THEME.shadow,
   },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  sectionHint:  { fontSize: 12, color: THEME.textLight, marginBottom: 10 },
+  sectionHint: { fontSize: 12, color: THEME.textLight, marginBottom: 10 },
   /* Engine selector */
   engineRow: { flexDirection: 'row', gap: 8 },
   engineCard: {
@@ -265,7 +279,7 @@ const styles = StyleSheet.create({
   },
   engineEmoji: { fontSize: 24, marginBottom: 4 },
   engineLabel: { fontSize: 13, fontWeight: 'bold', color: THEME.textDark, marginBottom: 2 },
-  engineSub:   { fontSize: 10, color: THEME.textLight, textAlign: 'center' },
+  engineSub: { fontSize: 10, color: THEME.textLight, textAlign: 'center' },
   activePip: {
     marginTop: 6, paddingHorizontal: 6, paddingVertical: 2,
     borderRadius: 8,
@@ -274,13 +288,13 @@ const styles = StyleSheet.create({
   /* API keys */
   keyBlock: { marginBottom: 12 },
   keyLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
-  keyRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  keyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   keyInput: {
     flex: 1, borderWidth: 2, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 9,
     fontSize: 13, color: THEME.textDark, backgroundColor: '#FAFAFA',
   },
-  eyeBtn:  { padding: 8 },
+  eyeBtn: { padding: 8 },
   eyeIcon: { fontSize: 20 },
   /* Fixation */
   levelRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
@@ -288,8 +302,8 @@ const styles = StyleSheet.create({
     flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center',
     borderWidth: 2, borderColor: '#E0E0E0', backgroundColor: '#FAFAFA',
   },
-  lvlNum:  { fontSize: 16, fontWeight: 'bold' },
-  lvlLabel:{ fontSize: 14, fontWeight: '700', color: THEME.textDark, marginBottom: 2 },
+  lvlNum: { fontSize: 16, fontWeight: 'bold' },
+  lvlLabel: { fontSize: 14, fontWeight: '700', color: THEME.textDark, marginBottom: 2 },
   lvlDesc: { fontSize: 12, color: THEME.textLight, lineHeight: 18 },
   /* Zen mode */
   zenRow: { flexDirection: 'row', alignItems: 'center' },
@@ -306,5 +320,23 @@ const styles = StyleSheet.create({
     elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8,
   },
   saveBtnTxt: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  /* Parental Controls */
+  parentalButton: {
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  parentalButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  parentalHint: {
+    fontSize: 12,
+    color: THEME.textLight,
+    marginTop: 8,
+    textAlign: 'center',
+  },
 });
 

@@ -10,21 +10,44 @@ export function getRandomEmergencyMessage() {
   return EMERGENCY_MESSAGES[Math.floor(Math.random() * EMERGENCY_MESSAGES.length)];
 }
 
+// HTML escape function to prevent injection
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
 export function buildPrintableHTML(quest, world, heroName) {
-  const name = heroName || world.terms.hero;
+  const name = escapeHTML(heroName || world.terms.hero);
+  const questTitle = escapeHTML(quest.questTitle || 'Quest Map');
+  const objective = escapeHTML(quest.objective || '');
+  const stage1Title = escapeHTML(quest.stage1?.title || world.terms.stage1);
+  const stage1Content = escapeHTML(quest.stage1?.content || '');
+  const stage2Title = escapeHTML(quest.stage2?.title || world.terms.stage2);
+  const stage2Content = escapeHTML(quest.stage2?.content || '');
+  const stage3Title = escapeHTML(quest.stage3?.title || world.terms.stage3);
+  const stage3Content = escapeHTML(quest.stage3?.content || '');
+  const hint = escapeHTML(quest.hint || '');
+  const hintLabel = escapeHTML(world.terms.hint);
+
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>QuestLens — ${quest.questTitle || 'Quest Map'}</title>
+  <title>QuestLens — ${questTitle}</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 24px; color: #1a1a1a; }
     h1   { color: ${world.primaryColor}; font-size: 24px; margin-bottom: 4px; }
     .hero{ font-size: 14px; color: #555; margin-bottom: 16px; }
     .stage { border: 2px solid ${world.accentColor}; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
     .stage-title { font-weight: bold; font-size: 16px; color: ${world.primaryColor}; }
-    .stage-body  { font-size: 14px; margin-top: 6px; }
+    .stage-body  { font-size: 14px; margin-top: 6px; white-space: pre-wrap; }
     .hint  { background: #fffde7; border-left: 4px solid #f9a825; padding: 10px; margin-top: 12px; }
     .work-area { margin-top: 20px; border: 1px dashed #aaa; min-height: 120px; padding: 8px; border-radius: 4px; }
     .work-label { font-size: 12px; color: #888; }
@@ -32,24 +55,24 @@ export function buildPrintableHTML(quest, world, heroName) {
   </style>
 </head>
 <body>
-  <h1>${world.guideEmoji} ${quest.questTitle || 'Quest Map'}</h1>
+  <h1>${world.guideEmoji} ${questTitle}</h1>
   <p class="hero">Quest for: <strong>${name}</strong> &nbsp;|&nbsp; World: ${world.name}</p>
-  <p><em>${quest.objective || ''}</em></p>
+  <p><em>${objective}</em></p>
 
   <div class="stage">
-    <div class="stage-title">⚡ ${quest.stage1?.title || world.terms.stage1}</div>
-    <div class="stage-body">${quest.stage1?.content || ''}</div>
+    <div class="stage-title">⚡ ${stage1Title}</div>
+    <div class="stage-body">${stage1Content}</div>
   </div>
   <div class="stage">
-    <div class="stage-title">⚔️ ${quest.stage2?.title || world.terms.stage2}</div>
-    <div class="stage-body">${quest.stage2?.content || ''}</div>
+    <div class="stage-title">⚔️ ${stage2Title}</div>
+    <div class="stage-body">${stage2Content}</div>
   </div>
   <div class="stage">
-    <div class="stage-title">🏆 ${quest.stage3?.title || world.terms.stage3}</div>
-    <div class="stage-body">${quest.stage3?.content || ''}</div>
+    <div class="stage-title">🏆 ${stage3Title}</div>
+    <div class="stage-body">${stage3Content}</div>
   </div>
 
-  ${quest.hint ? `<div class="hint"><strong>💡 ${world.terms.hint}:</strong> ${quest.hint}</div>` : ''}
+  ${hint ? `<div class="hint"><strong>💡 ${hintLabel}:</strong> ${hint}</div>` : ''}
 
   <div class="work-area">
     <div class="work-label">✏️ Work Space — do your work here, then take a photo to submit!</div>
