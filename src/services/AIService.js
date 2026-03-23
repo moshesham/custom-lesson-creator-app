@@ -381,7 +381,7 @@ export async function transformHomeworkToQuest(homeworkText, world, learningStyl
 
 export async function analyzeHomeworkImage(imageBase64, world, learningStyle, fixationLevel = 3) {
   const { engine, apiKey } = await getEngineAndKey();
-  if (!apiKey) return getDemoQuest(world, 'homework from photo');
+  if (!apiKey) return getDemoQuest(world, 'your photo homework');
 
   const systemPrompt = buildSystemPrompt(world, learningStyle, fixationLevel) +
     '\n\nRead the homework problem visible in the attached image and transform it into a quest. Return ONLY valid JSON.';
@@ -398,13 +398,13 @@ export async function analyzeHomeworkImage(imageBase64, world, learningStyle, fi
     const resultText = JSON.stringify(result);
     if (moderateContent(resultText)) {
       console.warn('Content moderation blocked inappropriate AI output from image');
-      return getDemoQuest(world, 'homework from photo');
+      return getDemoQuest(world, 'the homework in your photo');
     }
 
     return result;
   } catch (err) {
     console.warn(`${engine} vision error, using demo:`, err.message);
-    return getDemoQuest(world, 'homework from photo');
+    return getDemoQuest(world, 'the homework shown in your photo');
   }
 }
 

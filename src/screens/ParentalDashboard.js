@@ -34,9 +34,23 @@ export default function ParentalDashboard({ navigation }) {
                     style: 'destructive',
                     onPress: async () => {
                         await StorageService.deleteAllData();
-                        Alert.alert('Data Deleted', 'All child data has been removed from this device.', [
-                            { text: 'OK', onPress: () => navigation.replace('ParentalConsent') }
-                        ]);
+                        Alert.alert(
+                            'Data Deleted',
+                            'All child data has been removed. The app will now restart.',
+                            [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        // Force app reload to reset state and show ParentalConsent
+                                        import('react-native').then(({ NativeModules }) => {
+                                            if (NativeModules.DevSettings) {
+                                                NativeModules.DevSettings.reload();
+                                            }
+                                        });
+                                    },
+                                },
+                            ]
+                        );
                     },
                 },
             ]
@@ -97,9 +111,10 @@ export default function ParentalDashboard({ navigation }) {
                     ) : (
                         questHistory.slice(-10).reverse().map((relic, index) => (
                             <View key={index} style={styles.questItem}>
-                                <Text style={styles.questEmoji}>{relic.emoji}</Text>
+                                <Text style={styles.questEmoji}>{relic.worldEmoji}</Text>
                                 <View style={styles.questInfo}>
-                                    <Text style={styles.questName}>{relic.name}</Text>
+                                    <Text style={styles.questName}>{relic.rewardName}</Text>
+                                    <Text style={styles.questWorld}>{relic.questTitle}</Text>
                                     <Text style={styles.questDate}>
                                         {new Date(relic.earnedAt).toLocaleDateString()}
                                     </Text>
@@ -209,6 +224,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#fff',
         fontWeight: '600',
+    },
+    questWorld: {
+        fontSize: 13,
+        color: '#00d4ff',
+        marginTop: 2,
     },
     questDate: {
         fontSize: 12,

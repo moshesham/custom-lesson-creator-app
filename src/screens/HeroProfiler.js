@@ -10,9 +10,9 @@ import { THEME } from '../constants/theme';
 
 export default function HeroProfiler({ navigation }) {
   const [activeWorld, setActiveWorld] = useState(WORLDS[0]);
-  const [heroName, setHeroName]       = useState('');
-  const [style, setStyle]             = useState('read');
-  const [saved, setSaved]             = useState(false);
+  const [heroName, setHeroName] = useState('');
+  const [style, setStyle] = useState('read');
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     StorageService.getActiveWorld().then(w => { if (w) setActiveWorld(w); });
@@ -25,8 +25,7 @@ export default function HeroProfiler({ navigation }) {
     await StorageService.setHeroName(heroName.trim());
     await StorageService.setLearningStyle(style);
     setSaved(true);
-    const timer = setTimeout(() => navigation.goBack(), 900);
-    return () => clearTimeout(timer);
+    setTimeout(() => navigation.goBack(), 900);
   };
 
   return (
@@ -105,11 +104,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
     marginBottom: 4,
   },
-  back:        { width: 60 },
-  backTxt:     { color: '#FFF', fontSize: 15 },
+  back: { width: 60 },
+  backTxt: { color: '#FFF', fontSize: 15 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   container: { padding: 16, paddingBottom: 40 },
-  subtitle:  { fontSize: 15, marginBottom: 16 },
+  subtitle: { fontSize: 15, marginBottom: 16 },
   guideBubble: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: THEME.white, borderRadius: THEME.radiusCard,
@@ -117,8 +116,8 @@ const styles = StyleSheet.create({
     ...THEME.shadow,
   },
   guideEmoji: { fontSize: 32 },
-  guideText:  { flex: 1, fontSize: 13, lineHeight: 18 },
-  label:  { fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 4 },
+  guideText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  label: { fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 4 },
   input: {
     backgroundColor: THEME.white, borderWidth: 2, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10,
