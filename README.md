@@ -107,3 +107,11 @@ Without a key the app uses **built-in demo quests** — fully functional for tes
 ## License
 
 MIT — Made with ❤️ for curious kids.
+
+---
+
+## Development Roadmap
+
+See the detailed implementation plan for expanding QuestLens into a Pre-K through 6th grade, neurodivergent-friendly learning system:
+
+- [Implementation Plan: Grade-Level Progression + Gamification](./docs/IMPLEMENTATION_PLAN.md)
