@@ -3,6 +3,8 @@
     "name": "QuestLens",
     "slug": "questlens",
     "version": "1.0.0",
+    "scheme": "questlens",
+    "owner": "moshesham",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -11,16 +13,37 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "extra": {
+      "sentryDSN": "https://4065b2bcc70cf900dab0693a9cfc7a75@o4511096152653824.ingest.us.sentry.io/4511096159010816"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "QuestLens needs camera access to photograph your homework.",
+          "microphonePermission": false,
+          "photosPermission": "QuestLens needs photo library access to pick a homework image."
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.moshesham.questlens"
     },
     "android": {
+      "package": "com.moshesham.questlens",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

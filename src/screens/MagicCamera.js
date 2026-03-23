@@ -12,11 +12,12 @@ import { transformHomeworkToQuest, analyzeHomeworkImage } from '../services/AISe
 import { THEME } from '../constants/theme';
 
 export default function MagicCamera({ navigation, route }) {
-  const [activeWorld, setActiveWorld]   = useState(route.params?.world || WORLDS[0]);
-  const [inputMode, setInputMode]       = useState('text'); // 'text' | 'camera'
+  const [activeWorld, setActiveWorld] = useState(route.params?.world || WORLDS[0]);
+  const [inputMode, setInputMode] = useState('text'); // 'text' | 'camera'
   const [homeworkText, setHomeworkText] = useState('');
-  const [photoUri, setPhotoUri]         = useState(null);
-  const [loading, setLoading]           = useState(false);
+  const [photoUri, setPhotoUri] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   useEffect(() => {
     StorageService.getActiveWorld().then(w => { if (w) setActiveWorld(w); });
@@ -29,7 +30,7 @@ export default function MagicCamera({ navigation, route }) {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
       base64: false,
     });
@@ -41,8 +42,13 @@ export default function MagicCamera({ navigation, route }) {
   };
 
   const pickFromLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photo access needed', 'Please allow photo library access to pick a homework image.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
       base64: false,
     });
@@ -59,10 +65,26 @@ export default function MagicCamera({ navigation, route }) {
       return;
     }
     setLoading(true);
+
+    // Fun loading messages for kids
+    const messages = [
+      `${activeWorld.guideEmoji} ${activeWorld.guide} is reading your homework...`,
+      `⚡ Transforming into a quest...`,
+      `🎨 Adding ${activeWorld.name} magic...`,
+      `✨ Almost ready...`,
+    ];
+    let msgIndex = 0;
+    setLoadingMessage(messages[0]);
+
+    const messageInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % messages.length;
+      setLoadingMessage(messages[msgIndex]);
+    }, 2000);
+
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      const learningStyle  = await StorageService.getLearningStyle();
-      const fixationLevel  = await StorageService.getFixationLevel();
+      const learningStyle = await StorageService.getLearningStyle();
+      const fixationLevel = await StorageService.getFixationLevel();
       let quest;
       if (inputMode === 'camera' && photoUri) {
         const b64 = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 });
@@ -70,11 +92,14 @@ export default function MagicCamera({ navigation, route }) {
       } else {
         quest = await transformHomeworkToQuest(homeworkText, activeWorld, learningStyle, fixationLevel);
       }
+      clearInterval(messageInterval);
       navigation.navigate('QuestDisplay', { quest, world: activeWorld });
     } catch (err) {
+      clearInterval(messageInterval);
       Alert.alert('Oops!', 'Something went wrong. Try again!');
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -162,7 +187,10 @@ export default function MagicCamera({ navigation, route }) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFF" size="large" />
+            <>
+              <ActivityIndicator color="#FFF" size="large" style={{ marginBottom: 8 }} />
+              <Text style={styles.loadingText}>{loadingMessage}</Text>
+            </>
           ) : (
             <>
               <Text style={styles.transformIcon}>⚡</Text>
@@ -176,18 +204,18 @@ export default function MagicCamera({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  fill:      { flex: 1 },
+  fill: { flex: 1 },
   headerBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
     marginBottom: 4,
   },
-  back:        { width: 60 },
-  backTxt:     { color: '#FFF', fontSize: 15 },
+  back: { width: 60 },
+  backTxt: { color: '#FFF', fontSize: 15 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   container: { padding: 16, paddingBottom: 40 },
-  subtitle:  { fontSize: 15, marginBottom: 16 },
+  subtitle: { fontSize: 15, marginBottom: 16 },
   guideBubble: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: THEME.white, borderRadius: THEME.radiusCard,
@@ -195,25 +223,25 @@ const styles = StyleSheet.create({
     ...THEME.shadow,
   },
   guideEmoji: { fontSize: 32 },
-  guideText:  { flex: 1, fontSize: 13, lineHeight: 18 },
+  guideText: { flex: 1, fontSize: 13, lineHeight: 18 },
   camRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   camBtn: {
     flex: 1, borderRadius: THEME.radiusCard, paddingVertical: 16, alignItems: 'center', gap: 4,
     elevation: 3, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
   },
   camBtnIcon: { fontSize: 28 },
-  camBtnTxt:  { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
-  photoWrap:  { marginBottom: 16, borderRadius: 16, overflow: 'hidden', position: 'relative' },
-  photo:      { width: '100%', height: 200 },
+  camBtnTxt: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
+  photoWrap: { marginBottom: 16, borderRadius: 16, overflow: 'hidden', position: 'relative' },
+  photo: { width: '100%', height: 200 },
   clearPhoto: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: '#00000099', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
   },
   clearPhotoTxt: { color: '#FFF', fontWeight: 'bold' },
-  dividerRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
-  divider:     { flex: 1, height: 1 },
-  dividerTxt:  { fontSize: 12, fontWeight: 'bold' },
-  inputLabel:  { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
+  divider: { flex: 1, height: 1 },
+  dividerTxt: { fontSize: 12, fontWeight: 'bold' },
+  inputLabel: { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
   textInput: {
     backgroundColor: THEME.white, borderWidth: 2, borderRadius: 14,
     padding: 14, fontSize: 15, minHeight: 110, marginBottom: 20,
@@ -226,5 +254,6 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   transformIcon: { fontSize: 24 },
-  transformTxt:  { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+  transformTxt: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+  loadingText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginTop: 4 },
 });

@@ -1,15 +1,59 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StorageService } from './StorageService';
 
 /* ── API endpoints ── */
-const OPENAI_URL  = 'https://api.openai.com/v1/chat/completions';
-const GEMINI_URL  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const CLAUDE_URL  = 'https://api.anthropic.com/v1/messages';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
+
+const FETCH_TIMEOUT_MS = 8000; // Age-appropriate for Pre-K through 6th grade
+
+/* ── Content moderation (COPPA compliance) ── */
+const FORBIDDEN_WORDS = [
+  'blood', 'death', 'die', 'dead', 'kill', 'murder',
+  'monster', 'scary', 'horror', 'hurt', 'pain',
+  'weapon', 'gun', 'knife', 'sword', 'violence'
+];
+
+function moderateContent(text) {
+  if (!text || typeof text !== 'string') return false;
+  const lower = text.toLowerCase();
+  return FORBIDDEN_WORDS.some(word => {
+    // Check for word boundaries to avoid false positives
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lower);
+  });
+}
+
+/* ── Rate limiting ── */
+const lastRequestTime = { openai: 0, gemini: 0, claude: 0 };
+
+async function enforceRateLimit(engine) {
+  const now = Date.now();
+  const elapsed = now - lastRequestTime[engine];
+  const MIN_INTERVAL_MS = 1000; // 1 second between requests per provider
+
+  if (elapsed < MIN_INTERVAL_MS) {
+    await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS - elapsed));
+  }
+  lastRequestTime[engine] = Date.now();
+}
+
+/* ── Fetch with timeout (prevents infinite spinner) ── */
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /* ── JSON extraction helper (tolerates markdown fences or extra prose) ── */
 function extractJSON(raw) {
   if (typeof raw !== 'string') return raw;
   const start = raw.indexOf('{');
-  const end   = raw.lastIndexOf('}');
+  const end = raw.lastIndexOf('}');
   if (start === -1 || end === -1) throw new Error('No JSON found in response');
   return JSON.parse(raw.slice(start, end + 1));
 }
@@ -25,10 +69,10 @@ const DEPTH_INSTRUCTIONS = {
 function buildSystemPrompt(world, learningStyle, fixationLevel) {
   const depth = DEPTH_INSTRUCTIONS[fixationLevel] || DEPTH_INSTRUCTIONS[3];
   const lsNote =
-    learningStyle === 'audio'       ? 'Make it narrative and story-driven.' :
-    learningStyle === 'visual'      ? 'Describe vivid scenes and imagery.' :
-    learningStyle === 'interactive' ? 'Use game-style instructions with clear numbered steps.' :
-                                      'Use clear, readable text.';
+    learningStyle === 'audio' ? 'Make it narrative and story-driven.' :
+      learningStyle === 'visual' ? 'Describe vivid scenes and imagery.' :
+        learningStyle === 'interactive' ? 'Use game-style instructions with clear numbered steps.' :
+          'Use clear, readable text.';
 
   return `You are a World-Class Game Designer for "${world.name}". A hero has approached you with a 'Boring Scroll' (their homework).
 
@@ -174,7 +218,7 @@ function getDemoQuest(world, homeworkText) {
 
 /* ── Provider: OpenAI ── */
 async function callOpenAI(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetchWithTimeout(OPENAI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -193,7 +237,7 @@ async function callOpenAI(apiKey, systemPrompt, userMessage) {
 }
 
 async function callOpenAIVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetchWithTimeout(OPENAI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -216,7 +260,7 @@ async function callOpenAIVision(apiKey, systemPrompt, imageBase64) {
 
 /* ── Provider: Google Gemini ── */
 async function callGemini(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetchWithTimeout(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -230,7 +274,7 @@ async function callGemini(apiKey, systemPrompt, userMessage) {
 }
 
 async function callGeminiVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetchWithTimeout(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -250,7 +294,7 @@ async function callGeminiVision(apiKey, systemPrompt, imageBase64) {
 
 /* ── Provider: Anthropic Claude ── */
 async function callClaude(apiKey, systemPrompt, userMessage) {
-  const res = await fetch(CLAUDE_URL, {
+  const res = await fetchWithTimeout(CLAUDE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -270,7 +314,7 @@ async function callClaude(apiKey, systemPrompt, userMessage) {
 }
 
 async function callClaudeVision(apiKey, systemPrompt, imageBase64) {
-  const res = await fetch(CLAUDE_URL, {
+  const res = await fetchWithTimeout(CLAUDE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -296,15 +340,12 @@ async function callClaudeVision(apiKey, systemPrompt, imageBase64) {
 }
 
 /* ── Engine key lookup ── */
-const ENGINE_STORAGE_KEYS = {
-  openai: 'openai_api_key',
-  gemini: 'gemini_api_key',
-  claude: 'claude_api_key',
-};
-
 async function getEngineAndKey() {
-  const engine = (await AsyncStorage.getItem('ql_ai_engine')) || 'openai';
-  const apiKey = await AsyncStorage.getItem(ENGINE_STORAGE_KEYS[engine] || 'openai_api_key');
+  const engine = await StorageService.getAIEngine();
+  let apiKey;
+  if (engine === 'gemini') apiKey = await StorageService.getGeminiKey();
+  else if (engine === 'claude') apiKey = await StorageService.getClaudeKey();
+  else apiKey = await StorageService.getOpenAIKey();
   return { engine, apiKey };
 }
 
@@ -314,12 +355,24 @@ export async function transformHomeworkToQuest(homeworkText, world, learningStyl
   if (!apiKey) return getDemoQuest(world, homeworkText);
 
   const systemPrompt = buildSystemPrompt(world, learningStyle, fixationLevel);
-  const userMessage  = `Transform this homework into a quest: "${homeworkText}"`;
+  const userMessage = `Transform this homework into a quest: "${homeworkText}"`;
 
   try {
-    if (engine === 'gemini') return await callGemini(apiKey, systemPrompt, userMessage);
-    if (engine === 'claude') return await callClaude(apiKey, systemPrompt, userMessage);
-    return await callOpenAI(apiKey, systemPrompt, userMessage);
+    await enforceRateLimit(engine);
+
+    let result;
+    if (engine === 'gemini') result = await callGemini(apiKey, systemPrompt, userMessage);
+    else if (engine === 'claude') result = await callClaude(apiKey, systemPrompt, userMessage);
+    else result = await callOpenAI(apiKey, systemPrompt, userMessage);
+
+    // Content moderation check
+    const resultText = JSON.stringify(result);
+    if (moderateContent(resultText)) {
+      console.warn('Content moderation blocked inappropriate AI output');
+      return getDemoQuest(world, homeworkText);
+    }
+
+    return result;
   } catch (err) {
     console.warn(`${engine} error, using demo:`, err.message);
     return getDemoQuest(world, homeworkText);
@@ -328,23 +381,35 @@ export async function transformHomeworkToQuest(homeworkText, world, learningStyl
 
 export async function analyzeHomeworkImage(imageBase64, world, learningStyle, fixationLevel = 3) {
   const { engine, apiKey } = await getEngineAndKey();
-  if (!apiKey) return getDemoQuest(world, 'homework from photo');
+  if (!apiKey) return getDemoQuest(world, 'your photo homework');
 
   const systemPrompt = buildSystemPrompt(world, learningStyle, fixationLevel) +
     '\n\nRead the homework problem visible in the attached image and transform it into a quest. Return ONLY valid JSON.';
 
   try {
-    if (engine === 'gemini') return await callGeminiVision(apiKey, systemPrompt, imageBase64);
-    if (engine === 'claude') return await callClaudeVision(apiKey, systemPrompt, imageBase64);
-    return await callOpenAIVision(apiKey, systemPrompt, imageBase64);
+    await enforceRateLimit(engine);
+
+    let result;
+    if (engine === 'gemini') result = await callGeminiVision(apiKey, systemPrompt, imageBase64);
+    else if (engine === 'claude') result = await callClaudeVision(apiKey, systemPrompt, imageBase64);
+    else result = await callOpenAIVision(apiKey, systemPrompt, imageBase64);
+
+    // Content moderation check
+    const resultText = JSON.stringify(result);
+    if (moderateContent(resultText)) {
+      console.warn('Content moderation blocked inappropriate AI output from image');
+      return getDemoQuest(world, 'the homework in your photo');
+    }
+
+    return result;
   } catch (err) {
     console.warn(`${engine} vision error, using demo:`, err.message);
-    return getDemoQuest(world, 'homework from photo');
+    return getDemoQuest(world, 'the homework shown in your photo');
   }
 }
 
 export const AI_ENGINES = [
-  { id: 'openai', label: 'OpenAI',  subtitle: 'GPT-4o (best overall)',      emoji: '🤖', keyPrefix: 'sk-' },
-  { id: 'gemini', label: 'Gemini',  subtitle: 'Google (fast & free tier)',   emoji: '✨', keyPrefix: 'AIza' },
-  { id: 'claude', label: 'Claude',  subtitle: 'Anthropic (great reasoning)', emoji: '🧠', keyPrefix: 'sk-ant-' },
+  { id: 'openai', label: 'OpenAI', subtitle: 'GPT-4o (best overall)', emoji: '🤖', keyPrefix: 'sk-' },
+  { id: 'gemini', label: 'Gemini', subtitle: 'Google (fast & free tier)', emoji: '✨', keyPrefix: 'AIza' },
+  { id: 'claude', label: 'Claude', subtitle: 'Anthropic (great reasoning)', emoji: '🧠', keyPrefix: 'sk-ant-' },
 ];

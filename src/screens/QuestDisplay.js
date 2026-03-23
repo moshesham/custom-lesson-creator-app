@@ -17,10 +17,10 @@ export default function QuestDisplay({ navigation, route }) {
   const { quest, world } = route.params || {};
   const [activeWorld, setActiveWorld] = useState(world || WORLDS[0]);
   const [hintVisible, setHintVisible] = useState(false);
-  const [emergency, setEmergency]     = useState(false);
-  const [isSpeaking, setIsSpeaking]   = useState(false);
-  const [showReward, setShowReward]   = useState(false);
-  const [heroName, setHeroName]       = useState('');
+  const [emergency, setEmergency] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showReward, setShowReward] = useState(false);
+  const [heroName, setHeroName] = useState('');
   const rewardAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -51,12 +51,12 @@ export default function QuestDisplay({ navigation, route }) {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (quest) {
       await StorageService.addRelic({
-        rewardName:        quest.rewardName        || 'Mystery Relic',
+        rewardName: quest.rewardName || 'Mystery Relic',
         rewardDescription: quest.rewardDescription || '',
-        worldEmoji:        activeWorld.emoji,
-        worldId:           activeWorld.id,
-        worldName:         activeWorld.name,
-        questTitle:        quest.questTitle || '',
+        worldEmoji: activeWorld.emoji,
+        worldId: activeWorld.id,
+        worldName: activeWorld.name,
+        questTitle: quest.questTitle || '',
       });
     }
     Animated.spring(rewardAnim, { toValue: 1, useNativeDriver: true }).start();
@@ -81,7 +81,9 @@ export default function QuestDisplay({ navigation, route }) {
           <Text style={styles.emergencyMsg}>{getRandomEmergencyMessage()}</Text>
           <View style={styles.simplifiedBox}>
             <Text style={styles.simplifiedLabel}>👉 Just start here:</Text>
-            <Text style={styles.simplifiedStep}>{quest?.simplifiedStep || 'Read just the first word or number.'}</Text>
+            <Text style={styles.simplifiedStep}>
+              {quest?.simplifiedStep || 'Start by reading just the first sentence slowly. You can do this!'}
+            </Text>
           </View>
           <EmergencyFlare onPress={toggleEmergency} isActive={true} />
         </View>
@@ -182,7 +184,7 @@ export default function QuestDisplay({ navigation, route }) {
             <Text style={styles.rewardDesc}>{quest?.rewardDescription || 'Added to your trophy room!'}</Text>
             <TouchableOpacity
               style={[styles.rewardBtn, { backgroundColor: activeWorld.buttonColor }]}
-              onPress={() => { setShowReward(false); navigation.navigate('WorldDashboard'); }}
+              onPress={() => { setShowReward(false); navigation.reset({ index: 0, routes: [{ name: 'WorldDashboard' }] }); }}
             >
               <Text style={styles.rewardBtnTxt}>Back to Home 🏠</Text>
             </TouchableOpacity>
@@ -200,15 +202,15 @@ export default function QuestDisplay({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  fill:      { flex: 1 },
+  fill: { flex: 1 },
   headerBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
     marginBottom: 4,
   },
-  back:        { width: 60 },
-  backTxt:     { color: '#FFF', fontSize: 15 },
+  back: { width: 60 },
+  backTxt: { color: '#FFF', fontSize: 15 },
   headerTitle: { fontSize: 17, fontWeight: 'bold', color: '#FFF', flex: 1, textAlign: 'center' },
   container: { padding: 16, paddingBottom: 40 },
   objective: { fontSize: 13, marginBottom: 12, opacity: 0.8 },
@@ -224,8 +226,8 @@ const styles = StyleSheet.create({
     borderWidth: 0, borderLeftWidth: 4, borderLeftColor: '#F9A825',
     backgroundColor: '#FFF9C4', padding: 12,
   },
-  hintTxt:  { fontSize: 14, color: '#5D4037', lineHeight: 20 },
-  actionRow:{ marginHorizontal: 16, marginBottom: 6 },
+  hintTxt: { fontSize: 14, color: '#5D4037', lineHeight: 20 },
+  actionRow: { marginHorizontal: 16, marginBottom: 6 },
   voiceBtn: { borderRadius: THEME.radiusPill, paddingVertical: 12, alignItems: 'center' },
   voiceTxt: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
   completeBtn: {
@@ -235,23 +237,23 @@ const styles = StyleSheet.create({
   },
   completeBtnTxt: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
   /* Emergency */
-  emergencyBg:        { flex: 1, backgroundColor: '#0D0D1A' },
+  emergencyBg: { flex: 1, backgroundColor: '#0D0D1A' },
   emergencyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  emergencyTitle:     { fontSize: 28, fontWeight: 'bold', color: '#FFF', marginBottom: 12 },
-  emergencyMsg:       { fontSize: 16, color: '#CCC', textAlign: 'center', marginBottom: 24, lineHeight: 24 },
-  simplifiedBox:      { backgroundColor: '#1A1A3E', borderRadius: 12, padding: 16, width: '100%', marginBottom: 24 },
-  simplifiedLabel:    { fontSize: 14, color: '#AAA', marginBottom: 8 },
-  simplifiedStep:     { fontSize: 18, color: '#FFF', fontWeight: 'bold', lineHeight: 26 },
+  emergencyTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFF', marginBottom: 12 },
+  emergencyMsg: { fontSize: 16, color: '#CCC', textAlign: 'center', marginBottom: 24, lineHeight: 24 },
+  simplifiedBox: { backgroundColor: '#1A1A3E', borderRadius: 12, padding: 16, width: '100%', marginBottom: 24 },
+  simplifiedLabel: { fontSize: 14, color: '#AAA', marginBottom: 8 },
+  simplifiedStep: { fontSize: 18, color: '#FFF', fontWeight: 'bold', lineHeight: 26 },
   /* Reward modal */
-  modalBg:    { flex: 1, backgroundColor: '#000000BB', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalBg: { flex: 1, backgroundColor: '#000000BB', justifyContent: 'center', alignItems: 'center', padding: 24 },
   rewardCard: { backgroundColor: THEME.white, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', ...THEME.shadow },
-  rewardStars:  { fontSize: 32, marginBottom: 8 },
-  rewardTitle:  { fontSize: 24, fontWeight: 'bold', color: THEME.textDark, marginBottom: 8 },
-  rewardEmoji:  { fontSize: 48, marginVertical: 8 },
-  rewardName:   { fontSize: 18, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
-  rewardDesc:   { fontSize: 14, color: THEME.textMid, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  rewardBtn:    { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
+  rewardStars: { fontSize: 32, marginBottom: 8 },
+  rewardTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.textDark, marginBottom: 8 },
+  rewardEmoji: { fontSize: 48, marginVertical: 8 },
+  rewardName: { fontSize: 18, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
+  rewardDesc: { fontSize: 14, color: THEME.textMid, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  rewardBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
   rewardBtnTxt: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
   rewardBtnSecondary: { paddingVertical: 8 },
-  rewardBtnSecTxt:    { color: THEME.textLight, fontSize: 14 },
+  rewardBtnSecTxt: { color: THEME.textLight, fontSize: 14 },
 });
